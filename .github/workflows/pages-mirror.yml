@@ -1,0 +1,71 @@
+name: Publish network mirror (GitHub Pages)
+
+# Serves the OpenTofu/Terraform provider network mirror protocol:
+#   https://microsrv-cloud.github.io/terraform-provider-microsrv/registry.opentofu.org/microsrv-cloud/microsrv/index.json
+# Consumers: provider_installation { network_mirror { url = "<base>" ; include = ["registry.opentofu.org/microsrv-cloud/microsrv"] } }
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-mirror
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Build mirror tree from release assets
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          OUT=site/registry.opentofu.org/microsrv-cloud/microsrv
+          mkdir -p "$OUT"
+          auth=()
+          [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
+          curl -fsSL "${auth[@]}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=100" > /tmp/releases.json
+          : > /tmp/versions
+          jq -c '.[] | select((.draft or .prerelease) | not)
+                 | {tag: .tag_name, assets: [.assets[] | {name, url: .browser_download_url}]}' /tmp/releases.json |
+          while read -r rel; do
+            tag=$(jq -r .tag <<<"$rel")
+            version="${tag#v}"
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+            prefix="terraform-provider-microsrv_${version}_"
+            archives='{}'
+            while read -r a; do
+              name=$(jq -r .name <<<"$a"); url=$(jq -r .url <<<"$a")
+              case "$name" in "$prefix"*.zip) ;; *) continue ;; esac
+              target="${name#"$prefix"}"; target="${target%.zip}"
+              [[ "$target" =~ ^(darwin|freebsd|linux|openbsd|solaris|windows)_(386|amd64|arm|arm64)$ ]] || continue
+              curl -fsSL "${auth[@]}" "$url" -o "$OUT/$name"
+              archives=$(jq --arg t "$target" --arg u "$name" '.[$t]={url:$u}' <<<"$archives")
+            done < <(jq -c '.assets[]' <<<"$rel")
+            [ "$archives" = "{}" ] && continue
+            jq -n --argjson a "$archives" '{"archives":$a}' > "$OUT/$version.json"
+            printf '%s\n' "$version" >> /tmp/versions
+          done
+          jq -R -s 'split("\n") | map(select(length>0)) | unique | map({(.): {}}) | add // {} | {versions: .}' \
+            /tmp/versions > "$OUT/index.json"
+          test -s "$OUT/index.json"
+          echo "--- mirror tree ---"
+          find site -type f | sort
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
