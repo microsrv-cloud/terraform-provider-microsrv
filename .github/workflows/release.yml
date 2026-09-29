@@ -92,8 +92,24 @@ jobs:
           fi
           echo "--- $SUMS ---"
           cat "dist/$SUMS"
-          if gh release view "$REF_NAME" >/dev/null 2>&1; then
+          # draft -> attach assets -> publish: GitHub locks assets at publish time when
+          # immutable releases are enabled, so uploads must happen while still a draft.
+          view=$(gh release view "$REF_NAME" --json isDraft,assets 2>/dev/null || true)
+          if [ -z "$view" ]; then
+            gh release create "$REF_NAME" --draft --verify-tag --title "$REF_NAME" --generate-notes
+            view=$(gh release view "$REF_NAME" --json isDraft,assets)
+          fi
+          if [ "$(jq -r '.isDraft' <<<"$view")" = "true" ]; then
             gh release upload "$REF_NAME" "${assets[@]}" --clobber
+            gh release edit "$REF_NAME" --draft=false
           else
-            gh release create "$REF_NAME" --verify-tag --title "$REF_NAME" --generate-notes "${assets[@]}"
+            # Published already: attach anything missing (works while mutable; explain when immutable).
+            expected=$(printf '%s\n' "${assets[@]##*/}" | sort)
+            have=$(jq -r '.assets[].name' <<<"$view" | sort)
+            if [ -z "$(comm -23 <(printf '%s\n' "$expected") <(printf '%s\n' "$have"))" ]; then
+              echo "published release already has all assets; nothing to do"
+            elif ! gh release upload "$REF_NAME" "${assets[@]}" --clobber; then
+              echo "::error::published release $REF_NAME rejects asset uploads (immutable releases enabled?) — keep releases as drafts for CI, or delete release+tag and re-tag"
+              exit 1
+            fi
           fi
