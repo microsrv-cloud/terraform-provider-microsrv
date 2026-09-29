@@ -1,4 +1,4 @@
-.PHONY: build test tidy install lint
+.PHONY: build test tidy install lint package
 
 VERSION ?= dev
 BINARY  := terraform-provider-microsrv
@@ -20,3 +20,7 @@ install: build
 
 lint:
 	golangci-lint run ./...
+
+# Registry-format .zip packages (one per platform) for OCI publishing.
+package:
+	./scripts/package.sh "$(VERSION)"

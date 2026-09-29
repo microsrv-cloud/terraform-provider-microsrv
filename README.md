@@ -32,6 +32,32 @@ Auth: a Microsrv **access token** (`sel_…`, the only supported credential for 
 
 Env: `MICROSRV_ENDPOINT`, `MICROSRV_TOKEN` (or `MICROSRV_API_KEY`, mutually exclusive with `MICROSRV_TOKEN`).
 
+## Install (OpenTofu OCI mirror)
+
+Every version tag (`v*.*.*`) publishes the provider to GHCR as an OCI artifact (OpenTofu ≥ 1.7):
+
+```
+ghcr.io/microsrv-cloud/terraform-provider-microsrv:<version>
+```
+
+Until it lands in the official registry, point OpenTofu at GHCR in `~/.tofurc` (or the file named by `TF_CLI_CONFIG_FILE`):
+
+```hcl
+provider_installation {
+  oci_mirror {
+    repository_template = "ghcr.io/microsrv-cloud/terraform-provider-microsrv"
+    include             = ["registry.opentofu.org/microsrv-cloud/microsrv"]
+  }
+  direct {
+    exclude = ["registry.opentofu.org/microsrv-cloud/microsrv"]
+  }
+}
+```
+
+Then use the provider normally (`source = "microsrv-cloud/microsrv"`). The GHCR package is private by default — set it to public once (repository → Packages → package → Package settings → Change visibility), or authenticate with `docker login ghcr.io` / `oras login ghcr.io`.
+
+Note: custom installation methods record lock-file checksums for the current platform only; run `tofu providers lock -platform=…` once per platform your team uses.
+
 ## Data sources
 
 | Data source | Notes |

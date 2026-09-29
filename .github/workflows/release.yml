@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: oras-project/setup-oras@v1
+
+      - name: Test
+        run: make test
+
+      - name: Package and publish to GHCR (OpenTofu OCI mirror)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${REF_NAME#v}"
+          make package VERSION="$VERSION"
+          echo "$GITHUB_TOKEN" | oras login ghcr.io -u "$GH_ACTOR" --password-stdin
+          REPO="ghcr.io/$GITHUB_REPOSITORY"
+          LAYOUT="$RUNNER_TEMP/provider-layout"
+          suffix="terraform-provider-microsrv_${VERSION}_"
+          targets=()
+          for z in dist/*.zip; do
+            base=$(basename "$z" .zip)
+            rest="${base#"$suffix"}"
+            os="${rest%_*}"
+            arch="${rest#*_}"
+            oras push --artifact-type application/vnd.opentofu.provider-target \
+              --artifact-platform "$os/$arch" \
+              --oci-layout "$LAYOUT:${os}_${arch}" \
+              "$z:archive/zip"
+            targets+=("${os}_${arch}")
+          done
+          oras manifest index create --artifact-type application/vnd.opentofu.provider \
+            --oci-layout "$LAYOUT:$VERSION" "${targets[@]}"
+          oras cp --from-oci-layout "$LAYOUT:$VERSION" "$REPO:$VERSION"
