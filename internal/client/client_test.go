@@ -517,3 +517,40 @@ func TestWireGuardPeerLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreateNetworkInterfacePinsIP(t *testing.T) {
+	t.Parallel()
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = nil
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Errorf("decode request: %v", err)
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(client.NetworkInterface{ID: "ni1", IPAddress: "10.0.0.5", State: "PENDING"})
+	}))
+	defer srv.Close()
+
+	c, err := client.New(client.Config{Endpoint: srv.URL, Token: "t"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ni, err := c.CreateNetworkInterface(context.Background(), "p1", client.CreateNetworkInterfaceRequest{VPCID: "v1", IPAddress: "10.0.0.5"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ni.IPAddress != "10.0.0.5" {
+		t.Fatalf("response %+v", ni)
+	}
+	if got["ip_address"] != "10.0.0.5" {
+		t.Fatalf("pinned ip not sent: %#v", got)
+	}
+
+	// Omitting the pin must not serialize ip_address, so the API auto-allocates.
+	if _, err := c.CreateNetworkInterface(context.Background(), "p1", client.CreateNetworkInterfaceRequest{VPCID: "v1"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := got["ip_address"]; present {
+		t.Fatalf("empty ip_address serialized: %#v", got)
+	}
+}

@@ -182,7 +182,8 @@ type PatchVolumeRequest struct {
 }
 
 type CreateNetworkInterfaceRequest struct {
-	VPCID string `json:"vpc_id"`
+	VPCID     string `json:"vpc_id"`
+	IPAddress string `json:"ip_address,omitempty"` // optional pinned address; empty = platform assigns
 }
 
 type CreateVMRequest struct {

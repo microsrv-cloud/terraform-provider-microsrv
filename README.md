@@ -87,7 +87,7 @@ locals {
 | `microsrv_ssh_key` | ForceNew |
 | `microsrv_vpc` | Waits READY; `/24` CIDR |
 | `microsrv_volume` | Data disk (blank) or boot disk (`clone_from` ⇒ bootable, immutable); 512 MiB quantum; `attached_to` shows owner when attached |
-| `microsrv_network_interface` | IP assigned by the platform |
+| `microsrv_network_interface` | Optional `ip_address` pin (validated in VPC range, unique vs NI IPs and LB VIPs; change forces replace); omit = platform assigns the first free address |
 | `microsrv_vm` | Waits READY or CHECKPOINTED; `class` required; boot disk is an explicit `microsrv_volume` via required `boot_volume_id` (no inline boot); `serverless` (scale-to-zero, immutable); destroy detaches and leaves volumes to their own resources; VM flavors require ≥1 vCPU / 2 GiB (micro flavors are container-only) |
 | `microsrv_container_image` | OCI image pull; Waits READY; ForceNew |
 | `microsrv_container` | gVisor container; `class` required; `serverless` scale-to-zero; `user` override (`root` or image user); `command` may be empty (inherits image entrypoint/cmd); `ssh_key_ids` optional (unset = project keyring, updatable 1..N); `name`/`flavor_id`/`ssh_key_ids` updatable; waits READY or CHECKPOINTED |

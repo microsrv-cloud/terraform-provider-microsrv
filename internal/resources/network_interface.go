@@ -42,9 +42,40 @@ func (r *networkInterfaceResource) Metadata(_ context.Context, req resource.Meta
 	resp.TypeName = req.ProviderTypeName + "_network_interface"
 }
 
+// reassignIPOnReplace stops an omitted ip_address from being carried into a
+// replacement that targets another VPC or project: the framework's proposed
+// plan keeps the prior address for a null Optional+Computed config, which
+// would pin the new NI to an address from the old VPC (API 400) instead of
+// auto-allocating. Marking the plan value unknown tells Create to send no
+// ip_address so the platform assigns a fresh one.
+type reassignIPOnReplace struct{}
+
+func (reassignIPOnReplace) Description(context.Context) string {
+	return "Reassigns the IP when a replacement targets another VPC or project."
+}
+
+func (d reassignIPOnReplace) MarkdownDescription(ctx context.Context) string {
+	return d.Description(ctx)
+}
+
+func (reassignIPOnReplace) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	if !req.ConfigValue.IsNull() || req.StateValue.IsNull() {
+		return // explicit pin: RequiresReplace handles changes; no state: first create
+	}
+	var plan, state networkInterfaceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !plan.VPCID.Equal(state.VPCID) || !plan.ProjectID.Equal(state.ProjectID) {
+		resp.PlanValue = types.StringUnknown()
+	}
+}
+
 func (r *networkInterfaceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "A Microsrv network interface bound to a VPC. IP is assigned by the platform.",
+		MarkdownDescription: "A Microsrv network interface bound to a VPC. Set `ip_address` to pin a specific address, or omit it and the platform assigns the first free address in the VPC range.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -58,8 +89,13 @@ func (r *networkInterfaceResource) Schema(_ context.Context, _ resource.SchemaRe
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"region_id":  schema.StringAttribute{Computed: true},
-			"ip_address": schema.StringAttribute{Computed: true},
+			"region_id": schema.StringAttribute{Computed: true},
+			"ip_address": schema.StringAttribute{
+				MarkdownDescription: "Optional pinned IPv4 inside the VPC range (not network/gateway/broadcast, not already used by an NI or LB VIP). Omit to let the platform assign the first free address. Changing it forces replacement.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{reassignIPOnReplace{}, stringplanmodifier.RequiresReplace()},
+			},
 			"prefix_len": schema.Int64Attribute{Computed: true},
 			"state":      schema.StringAttribute{Computed: true},
 			"status":     schema.StringAttribute{Computed: true},
@@ -80,7 +116,8 @@ func (r *networkInterfaceResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 	out, err := r.meta.Client.CreateNetworkInterface(ctx, plan.ProjectID.ValueString(), client.CreateNetworkInterfaceRequest{
-		VPCID: plan.VPCID.ValueString(),
+		VPCID:     plan.VPCID.ValueString(),
+		IPAddress: plan.IPAddress.ValueString(),
 	})
 	if err != nil {
 		apiErrDiagnostics("Create network interface failed", err, &resp.Diagnostics)
