@@ -46,7 +46,7 @@ provider_installation {
 }
 ```
 
-Then use the provider normally (`source = "microsrv-cloud/microsrv"`). Anonymous pulls from ghcr.io need OpenTofu ≥ 1.13 — v1.12.x fails against ghcr's `/v2/` challenge ([opentofu#3316](https://github.com/opentofu/opentofu/issues/3316)). The GHCR package is private by default — set it to public once (repository → Packages → package → Package settings → Change visibility), or authenticate with `docker login ghcr.io` / `oras login ghcr.io`.
+Then use the provider normally (`source = "microsrv-cloud/microsrv"`). Anonymous pulls from ghcr.io need OpenTofu ≥ 1.13 — v1.12.x fails against ghcr's `/v2/` challenge ([opentofu#3316](https://github.com/opentofu/opentofu/issues/3316)).
 
 Note: custom installation methods record lock-file checksums for the current platform only; run `tofu providers lock -platform=…` once per platform your team uses.
 
