@@ -1,0 +1,10 @@
+/bin/
+*.exe
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate*
+crash.log
+*.test
+coverage.out
+.env
+.pi/
