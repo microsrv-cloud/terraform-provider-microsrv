@@ -113,3 +113,14 @@ jobs:
               exit 1
             fi
           fi
+
+  # release:published cannot chain these workflows: events created by
+  # GITHUB_TOKEN never trigger another workflow run, so the mirror is
+  # invoked explicitly as a reusable workflow within this same run.
+  mirror:
+    needs: publish
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages-mirror.yml
