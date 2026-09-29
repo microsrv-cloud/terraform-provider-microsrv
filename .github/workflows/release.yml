@@ -3,9 +3,14 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)publish release assets for"
+        required: true
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -13,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-go@v5
         with:
@@ -27,7 +34,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
-          REF_NAME: ${{ github.ref_name }}
+          REF_NAME: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           VERSION="${REF_NAME#v}"
@@ -51,3 +58,42 @@ jobs:
           oras manifest index create --artifact-type application/vnd.opentofu.provider \
             --oci-layout "$LAYOUT:$VERSION" "${targets[@]}"
           oras cp --from-oci-layout "$LAYOUT:$VERSION" "$REPO:$VERSION"
+
+      # Assets required by registry.opentofu.org submission validation:
+      #   terraform-provider-microsrv_<ver>_<os>_<arch>.zip
+      #   terraform-provider-microsrv_<ver>_SHA256SUMS   ("<sha256>  <filename>" per line)
+      #   terraform-provider-microsrv_<ver>_SHA256SUMS.sig  (optional, if GPG_PRIVATE_KEY secret is set)
+      - name: Publish GitHub Release assets (OpenTofu registry format)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF_NAME: ${{ inputs.tag || github.ref_name }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          case "$REF_NAME" in
+            v*.*.*) ;;
+            *) echo "::error::'${REF_NAME}' is not a v*.*.* tag"; exit 1 ;;
+          esac
+          VERSION="${REF_NAME#v}"
+          BINARY="terraform-provider-microsrv"
+          SUMS="${BINARY}_${VERSION}_SHA256SUMS"
+          # Bare filenames (no ./ prefix) — the registry matches checksum entries by exact zip name.
+          (cd dist && sha256sum *.zip > "$SUMS")
+          assets=(dist/*.zip "dist/$SUMS")
+          if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
+            printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
+            sign=(--batch --yes --armor --pinentry-mode loopback)
+            if [ -n "${GPG_PASSPHRASE:-}" ]; then sign+=(--passphrase "$GPG_PASSPHRASE"); fi
+            gpg "${sign[@]}" --detach-sign --output "dist/$SUMS.sig" "dist/$SUMS"
+            assets+=("dist/$SUMS.sig")
+          else
+            echo "::notice::GPG_PRIVATE_KEY secret not set - publishing without SHA256SUMS.sig (register a key via a 'Provider Signing Key' issue on opentofu/registry)"
+          fi
+          echo "--- $SUMS ---"
+          cat "dist/$SUMS"
+          if gh release view "$REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$REF_NAME" "${assets[@]}" --clobber
+          else
+            gh release create "$REF_NAME" --verify-tag --title "$REF_NAME" --generate-notes "${assets[@]}"
+          fi
