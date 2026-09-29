@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -48,7 +49,7 @@ func (r *wireGuardPeerResource) Metadata(_ context.Context, req resource.Metadat
 
 func (r *wireGuardPeerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "A Microsrv WireGuard peer bound to a network interface. Submit only the public key of a locally generated X25519 keypair; the tunnel IP and gateway endpoint appear in `status` once READY. No update API: changes require replace.",
+		MarkdownDescription: "A Microsrv WireGuard peer bound to a network interface. Submit only the public key of a locally generated X25519 keypair; Create blocks until `status` carries the tunnel coordinates (allocated_ip, endpoint_addr, server_public_key). No update API: changes require replace.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -126,6 +127,13 @@ func (r *wireGuardPeerResource) Create(ctx context.Context, req resource.CreateR
 			return "", err
 		}
 		out = v
+		// The platform flips state=READY before the tunnel status
+		// (allocated_ip/endpoint_addr/server_public_key) is filled. Report
+		// PROVISIONING until it is, so we keep polling and never persist a
+		// half-filled status that consumers (wg0.conf) render as PENDING.
+		if v.State == client.StateReady && !peerTunnelConfigured(v.Status) {
+			return client.StateProvisioning, nil
+		}
 		return v.State, nil
 	}); err != nil {
 		rollbackAfterWaitFailure(ctx, r.meta, out.ID, r.meta.Client.DeleteWireGuardPeer, func(ctx context.Context, id string) (string, error) {
@@ -192,6 +200,20 @@ func (r *wireGuardPeerResource) Delete(ctx context.Context, req resource.DeleteR
 
 func (r *wireGuardPeerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// peerTunnelConfigured reports whether the platform has filled the tunnel
+// coordinates in status — exactly the fields the wg0.conf template consumes.
+func peerTunnelConfigured(status json.RawMessage) bool {
+	var s struct {
+		AllocatedIP     string `json:"allocated_ip"`
+		EndpointAddr    string `json:"endpoint_addr"`
+		ServerPublicKey string `json:"server_public_key"`
+	}
+	if err := json.Unmarshal(status, &s); err != nil {
+		return false
+	}
+	return s.AllocatedIP != "" && s.EndpointAddr != "" && s.ServerPublicKey != ""
 }
 
 func setWireGuardPeerState(m *wireGuardPeerModel, out *client.WireGuardPeer) {
