@@ -2,14 +2,6 @@
 
 Terraform/OpenTofu provider (`microsrv`) for managed infrastructure via the Microsrv control plane (`https://api.microsrv.ru`).
 
-## Build
-
-```bash
-make build
-make test
-make install   # installs to ~/.terraform.d/plugins/.../microsrv-cloud/microsrv/dev/...
-```
-
 ## Provider
 
 ```hcl
@@ -57,6 +49,14 @@ provider_installation {
 Then use the provider normally (`source = "microsrv-cloud/microsrv"`). The GHCR package is private by default — set it to public once (repository → Packages → package → Package settings → Change visibility), or authenticate with `docker login ghcr.io` / `oras login ghcr.io`.
 
 Note: custom installation methods record lock-file checksums for the current platform only; run `tofu providers lock -platform=…` once per platform your team uses.
+
+## Build
+
+```bash
+make build
+make test
+make install   # installs to ~/.terraform.d/plugins/.../microsrv-cloud/microsrv/dev/...
+```
 
 ## Data sources
 
