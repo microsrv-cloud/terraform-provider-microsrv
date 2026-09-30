@@ -26,9 +26,9 @@ Env: `MICROSRV_ENDPOINT`, `MICROSRV_TOKEN` (or `MICROSRV_API_KEY`, mutually excl
 
 ## Install
 
-### Official registry (listed; install pending signing key)
+### Official registry
 
-The provider is listed at `registry.opentofu.org/microsrv-cloud/microsrv`, so this will be the standard configuration:
+The provider is listed at `registry.opentofu.org/microsrv-cloud/microsrv`:
 
 ```hcl
 terraform {
@@ -40,7 +40,7 @@ terraform {
 }
 ```
 
-**Not installable yet:** `tofu init` fails with `404 ... SHA256SUMS.sig` until the provider's GPG signing key is registered with the registry and releases carry signatures (`signing_keys` is still empty). Until then use one of the mirrors below — both verified end-to-end.
+Verified end-to-end: cold `tofu init` installs every published version (`0.1.2`+) from the official registry with full GPG signature verification against the registry-registered signing key. The mirrors below remain as self-hosted fallbacks.
 
 ### Network mirror (GitHub Pages)
 
