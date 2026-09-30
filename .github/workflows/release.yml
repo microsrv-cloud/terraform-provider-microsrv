@@ -83,7 +83,11 @@ jobs:
           assets=(dist/*.zip "dist/$SUMS")
           if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
             printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
-            sign=(--batch --yes --armor --pinentry-mode loopback)
+            # BINARY detached signature (no --armor): OpenTofu parses
+            # shasums_signature_url as raw OpenPGP — armored input fails with
+            # "tag byte does not have MSB set". Reference: HashiCorp's own
+            # SHA256SUMS.*.sig files are binary.
+            sign=(--batch --yes --pinentry-mode loopback)
             if [ -n "${GPG_PASSPHRASE:-}" ]; then sign+=(--passphrase "$GPG_PASSPHRASE"); fi
             gpg "${sign[@]}" --detach-sign --output "dist/$SUMS.sig" "dist/$SUMS"
             assets+=("dist/$SUMS.sig")
