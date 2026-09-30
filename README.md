@@ -28,19 +28,34 @@ Env: `MICROSRV_ENDPOINT`, `MICROSRV_TOKEN` (or `MICROSRV_API_KEY`, mutually excl
 
 ### Official registry
 
-The provider is listed at `registry.opentofu.org/microsrv-cloud/microsrv`:
+The provider is served from `registry.opentofu.org/microsrv-cloud/microsrv` — no custom
+`provider_installation` config needed. Declare the source:
 
 ```hcl
 terraform {
   required_providers {
     microsrv = {
-      source = "microsrv-cloud/microsrv"
+      source  = "microsrv-cloud/microsrv"
+      version = "~> 0.3" # optional pin; latest published is 0.3.0
     }
   }
 }
 ```
 
-Verified end-to-end: cold `tofu init` installs every published version (`0.1.2`+) from the official registry with full GPG signature verification against the registry-registered signing key. The mirrors below remain as self-hosted fallbacks.
+Then initialize:
+
+```bash
+tofu init
+```
+
+Every download is GPG-verified against the registry-registered signing key
+(`Microsrv Releases <releases@microsrv.ru>`, fingerprint `1EE5DF70…626C19FB`), and the
+resulting hashes are recorded in `.terraform.lock.hcl`. After `init`, configure the
+provider per the Provider section above.
+
+Verified end-to-end: cold `tofu init` installs every published version (`0.1.2`+) from
+the official registry. The mirrors below remain as self-hosted fallbacks (e.g. if
+`registry.opentofu.org` is unreachable from your network).
 
 ### Network mirror (GitHub Pages)
 
@@ -74,7 +89,7 @@ Every version tag (`v*.*.*`) publishes the provider to GHCR as an OCI artifact (
 ghcr.io/microsrv-cloud/terraform-provider-microsrv:<version>
 ```
 
-Until it lands in the official registry, point OpenTofu at GHCR in `~/.tofurc` (or the file named by `TF_CLI_CONFIG_FILE`):
+As a fallback (or if you prefer GHCR), point OpenTofu at GHCR in `~/.tofurc` (or the file named by `TF_CLI_CONFIG_FILE`):
 
 ```hcl
 provider_installation {
