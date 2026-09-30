@@ -24,7 +24,25 @@ Auth: a Microsrv **access token** (`sel_…`, the only supported credential for 
 
 Env: `MICROSRV_ENDPOINT`, `MICROSRV_TOKEN` (or `MICROSRV_API_KEY`, mutually exclusive with `MICROSRV_TOKEN`).
 
-## Install (OpenTofu network mirror — GitHub Pages)
+## Install
+
+### Official registry (listed; install pending signing key)
+
+The provider is listed at `registry.opentofu.org/microsrv-cloud/microsrv`, so this will be the standard configuration:
+
+```hcl
+terraform {
+  required_providers {
+    microsrv = {
+      source = "microsrv-cloud/microsrv"
+    }
+  }
+}
+```
+
+**Not installable yet:** `tofu init` fails with `404 ... SHA256SUMS.sig` until the provider's GPG signing key is registered with the registry and releases carry signatures (`signing_keys` is still empty). Until then use one of the mirrors below — both verified end-to-end.
+
+### Network mirror (GitHub Pages)
 
 Every published release is mirrored to GitHub Pages in the [provider network mirror](https://opentofu.org/docs/cli/config/config-file/) format — no auth, no version quirks, any OpenTofu ≥ 0.13:
 
@@ -48,7 +66,7 @@ provider_installation {
 
 Then use the provider normally (`source = "microsrv-cloud/microsrv"`). The mirror rebuilds automatically on every release (`pages-mirror.yml`), and `tofu init` records lock-file hashes from the downloaded archives.
 
-## Install (OpenTofu OCI mirror)
+### OCI mirror (GHCR)
 
 Every version tag (`v*.*.*`) publishes the provider to GHCR as an OCI artifact (OpenTofu ≥ 1.7):
 
