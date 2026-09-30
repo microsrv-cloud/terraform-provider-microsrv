@@ -8,8 +8,7 @@ Terraform/OpenTofu provider (`microsrv`) for managed infrastructure via the Micr
 terraform {
   required_providers {
     microsrv = {
-      source  = "microsrv-cloud/microsrv"
-      version = "0.1.0"
+      source = "microsrv-cloud/microsrv"
     }
   }
 }
@@ -35,12 +34,14 @@ The provider is served from `registry.opentofu.org/microsrv-cloud/microsrv` — 
 terraform {
   required_providers {
     microsrv = {
-      source  = "microsrv-cloud/microsrv"
-      version = "~> 0.3" # optional pin; latest published is 0.3.0
+      source = "microsrv-cloud/microsrv"
     }
   }
 }
 ```
+
+Omit `version` to always get the latest release; add a `version` constraint only if
+you need to pin.
 
 Then initialize:
 
@@ -53,8 +54,8 @@ Every download is GPG-verified against the registry-registered signing key
 resulting hashes are recorded in `.terraform.lock.hcl`. After `init`, configure the
 provider per the Provider section above.
 
-Verified end-to-end: cold `tofu init` installs every published version (`0.1.2`+) from
-the official registry. The mirrors below remain as self-hosted fallbacks (e.g. if
+Verified end-to-end: cold `tofu init` installs every published version from the
+official registry. The mirrors below remain as self-hosted fallbacks (e.g. if
 `registry.opentofu.org` is unreachable from your network).
 
 ### Network mirror (GitHub Pages)
