@@ -19,10 +19,11 @@ on:
           - full
           - fast
 
-# Cancel in-progress runs on the same branch/PR so a newer push wins.
+# Do NOT cancel in-progress runs; killing a run mid-flight aborts OpenTofu
+# before terraform destroy can execute, stranding live cloud resources.
 concurrency:
   group: integration-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   acceptance:
@@ -44,6 +45,9 @@ jobs:
         with:
           tofu_version: "latest"
 
+      - name: Sweep stale resources (pre-test)
+        run: go run ./scripts/sweep.go
+
       - name: Run Acceptance Tests
         shell: bash
         run: |
@@ -56,6 +60,10 @@ jobs:
           fi
           echo "Running acceptance tests with pattern: $PATTERN (timeout: $TIMEOUT)"
           go test ./internal/... -run "$PATTERN" -v -timeout "$TIMEOUT" 2>&1 | tee /tmp/acc.log
+
+      - name: Sweep stale resources (post-test)
+        if: always()
+        run: go run ./scripts/sweep.go
 
       - name: Upload logs
         if: always()

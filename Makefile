@@ -1,4 +1,4 @@
-.PHONY: build test tidy install lint package testacc testacc-fast
+.PHONY: build test tidy install lint package testacc testacc-fast sweep
 
 VERSION ?= dev
 BINARY  := terraform-provider-microsrv
@@ -35,3 +35,9 @@ testacc-fast:
 	TF_ACC=1 go test ./internal/... \
 		-run "TestAcc(DataRegion|DataFlavor|DataImage|DataQuota|DataPricing|DataProject|Project_|SSHKey_|VPC_|Volume_blank|NetworkInterface_)" \
 		-v -timeout 15m
+
+# Sweep and delete orphaned acceptance test resources (prefix: tf-acc-).
+# Requires: MICROSRV_TOKEN (or MICROSRV_API_KEY) environment variable.
+sweep:
+	go run ./scripts/sweep.go
+
