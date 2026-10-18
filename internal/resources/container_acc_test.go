@@ -48,9 +48,10 @@ func TestAccContainerImage_basic(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      "microsrv_container_image.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_container_image.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"ref"},
 			},
 		},
 	})

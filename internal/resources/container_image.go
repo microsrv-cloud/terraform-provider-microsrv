@@ -162,7 +162,11 @@ func setContainerImageState(m *containerImageModel, out *client.ContainerImage) 
 	m.ID = types.StringValue(out.ID)
 	m.ProjectID = types.StringValue(out.ProjectID)
 	m.RegionID = types.StringValue(out.RegionID)
-	m.Ref = types.StringValue(out.Ref)
+	// The platform resolves mutable tags (e.g. :latest) to digests (@sha256:...).
+	// Preserve the planned ref if present to avoid Terraform reporting inconsistent result.
+	if m.Ref.IsNull() || m.Ref.IsUnknown() || m.Ref.ValueString() == "" {
+		m.Ref = types.StringValue(out.Ref)
+	}
 	m.State = types.StringValue(out.State)
 	m.Status = types.StringValue(rawJSON(out.Status))
 	m.CreatedAt = types.StringValue(out.CreatedAt)

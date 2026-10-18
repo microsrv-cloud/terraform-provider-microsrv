@@ -287,6 +287,10 @@ data "microsrv_regions" "all" {}
 data "microsrv_images"  "all" {}
 data "microsrv_flavors" "all" {}
 
+locals {
+  vm_flavor = [for f in data.microsrv_flavors.all.flavors : f if f.vcpus >= 1 && f.memory_mib >= 2048][0]
+}
+
 resource "microsrv_project" "test" {
   name = %q
 }
@@ -317,7 +321,7 @@ resource "microsrv_volume" "boot" {
 resource "microsrv_vm" "test" {
   project_id            = microsrv_project.test.id
   region_id             = data.microsrv_regions.all.regions[0].id
-  flavor_id             = data.microsrv_flavors.all.flavors[0].id
+  flavor_id             = local.vm_flavor.id
   class                 = "shared"
   name                  = %q
   network_interface_ids = [microsrv_network_interface.test.id]
