@@ -61,7 +61,7 @@ func TestAccContainerImage_basic(t *testing.T) {
 // microsrv_container  (full lifecycle: create, env update, import)
 // ---------------------------------------------------------------------------
 
-func containerStackConfig(projName, suffix string, envVal string) string {
+func containerStackConfig(projName, suffix, pubKey, envVal string) string {
 	return acctest.ProviderConfig + fmt.Sprintf(`
 data "microsrv_regions" "all" {}
 data "microsrv_flavors" "all" {}
@@ -115,20 +115,21 @@ resource "microsrv_container" "test" {
     ACC_TEST_VAR = %q
   }
 }
-`, projName, suffix, acctest.TestSSHPublicKey, suffix, envVal)
+`, projName, suffix, pubKey, suffix, envVal)
 }
 
 func TestAccContainer_basic(t *testing.T) {
 	acctest.SkipIfNoAccEnv(t)
 	suffix := acctest.RandSuffix()
 	projName := fmt.Sprintf("tf-acc-ct-%s", suffix)
+	pubKey := acctest.RandSSHPublicKey()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProviderFactories,
 		Steps: []resource.TestStep{
 			// Step 1: create
 			{
-				Config: containerStackConfig(projName, suffix, "initial"),
+				Config: containerStackConfig(projName, suffix, pubKey, "initial"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("microsrv_container.test", "id"),
 					resource.TestCheckResourceAttr("microsrv_container.test", "state", "READY"),
@@ -138,7 +139,7 @@ func TestAccContainer_basic(t *testing.T) {
 			},
 			// Step 2: update env in-place (no replace)
 			{
-				Config: containerStackConfig(projName, suffix, "updated"),
+				Config: containerStackConfig(projName, suffix, pubKey, "updated"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("microsrv_container.test", "env.ACC_TEST_VAR", "updated"),
 					resource.TestCheckResourceAttr("microsrv_container.test", "state", "READY"),

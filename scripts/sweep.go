@@ -48,7 +48,7 @@ func main() {
 		log.Printf("Warning: failed to list SSH keys: %v\n", err)
 	} else {
 		for _, k := range keys {
-			if strings.HasPrefix(k.Name, "tf-acc-") {
+			if strings.HasPrefix(k.Name, "tf-acc-") || strings.Contains(k.PublicKey, "AAAAC3NzaC1lZDI1NTE5AAAAIE7pFNt09gFCjm8g1eF9zl+sCVYfMC49P/J98BBWKZ8P") {
 				fmt.Printf("Deleting stale SSH key: %s (%s)... ", k.Name, k.ID)
 				if err := c.DeleteSSHKey(ctx, k.ID); err != nil {
 					fmt.Printf("failed: %v\n", err)

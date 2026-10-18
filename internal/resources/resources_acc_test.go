@@ -53,6 +53,7 @@ func TestAccSSHKey_basic(t *testing.T) {
 	acctest.SkipIfNoAccEnv(t)
 	suffix := acctest.RandSuffix()
 	name := fmt.Sprintf("tf-acc-key-%s", suffix)
+	pubKey := acctest.RandSSHPublicKey()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProviderFactories,
@@ -63,10 +64,10 @@ resource "microsrv_ssh_key" "test" {
   name       = %q
   public_key = %q
 }
-`, name, acctest.TestSSHPublicKey),
+`, name, pubKey),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("microsrv_ssh_key.test", "name", name),
-					resource.TestCheckResourceAttr("microsrv_ssh_key.test", "public_key", acctest.TestSSHPublicKey),
+					resource.TestCheckResourceAttr("microsrv_ssh_key.test", "public_key", pubKey),
 					resource.TestCheckResourceAttrSet("microsrv_ssh_key.test", "id"),
 					resource.TestCheckResourceAttrSet("microsrv_ssh_key.test", "fingerprint"),
 					resource.TestCheckResourceAttrSet("microsrv_ssh_key.test", "user_id"),
@@ -281,7 +282,7 @@ resource "microsrv_network_interface" "test" {
 // Shared VM-stack config (project + ssh_key + vpc + ni + boot volume + vm)
 // ---------------------------------------------------------------------------
 
-func vmStackConfig(projName, suffix, vmName string) string {
+func vmStackConfig(projName, suffix, pubKey, vmName string) string {
 	return acctest.ProviderConfig + fmt.Sprintf(`
 data "microsrv_regions" "all" {}
 data "microsrv_images"  "all" {}
@@ -328,7 +329,7 @@ resource "microsrv_vm" "test" {
   ssh_key_ids           = [microsrv_ssh_key.test.id]
   boot_volume_id        = microsrv_volume.boot.id
 }
-`, projName, suffix, acctest.TestSSHPublicKey, vmName)
+`, projName, suffix, pubKey, vmName)
 }
 
 // ---------------------------------------------------------------------------
@@ -339,6 +340,7 @@ func TestAccVM_basic(t *testing.T) {
 	acctest.SkipIfNoAccEnv(t)
 	suffix := acctest.RandSuffix()
 	projName := fmt.Sprintf("tf-acc-vm-%s", suffix)
+	pubKey := acctest.RandSSHPublicKey()
 
 	// The test uses the first available flavor; we look it up from the live API
 	// via a data source embedded in the HCL config itself.
@@ -347,7 +349,7 @@ func TestAccVM_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Step 1: create
 			{
-				Config: vmStackConfig(projName, suffix, "tf-acc-vm-"+suffix),
+				Config: vmStackConfig(projName, suffix, pubKey, "tf-acc-vm-"+suffix),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("microsrv_vm.test", "id"),
 					resource.TestCheckResourceAttr("microsrv_vm.test", "name", "tf-acc-vm-"+suffix),
@@ -357,7 +359,7 @@ func TestAccVM_basic(t *testing.T) {
 			},
 			// Step 2: rename (in-place update)
 			{
-				Config: vmStackConfig(projName, suffix, "tf-acc-vm-renamed-"+suffix),
+				Config: vmStackConfig(projName, suffix, pubKey, "tf-acc-vm-renamed-"+suffix),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("microsrv_vm.test", "name", "tf-acc-vm-renamed-"+suffix),
 					resource.TestCheckResourceAttr("microsrv_vm.test", "state", "READY"),
@@ -381,12 +383,13 @@ func TestAccGatewayRoute_ssh(t *testing.T) {
 	acctest.SkipIfNoAccEnv(t)
 	suffix := acctest.RandSuffix()
 	projName := fmt.Sprintf("tf-acc-gw-%s", suffix)
+	pubKey := acctest.RandSSHPublicKey()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: vmStackConfig(projName, suffix, "tf-acc-gw-"+suffix) + `
+				Config: vmStackConfig(projName, suffix, pubKey, "tf-acc-gw-"+suffix) + `
 resource "microsrv_gateway_route" "ssh" {
   project_id = microsrv_project.test.id
   compute_id = microsrv_vm.test.id
@@ -402,7 +405,7 @@ resource "microsrv_gateway_route" "ssh" {
 			},
 			// Update: disable the route
 			{
-				Config: vmStackConfig(projName, suffix, "tf-acc-gw-"+suffix) + `
+				Config: vmStackConfig(projName, suffix, pubKey, "tf-acc-gw-"+suffix) + `
 resource "microsrv_gateway_route" "ssh" {
   project_id = microsrv_project.test.id
   compute_id = microsrv_vm.test.id
@@ -427,12 +430,13 @@ func TestAccGatewayRoute_http(t *testing.T) {
 	acctest.SkipIfNoAccEnv(t)
 	suffix := acctest.RandSuffix()
 	projName := fmt.Sprintf("tf-acc-gwh-%s", suffix)
+	pubKey := acctest.RandSSHPublicKey()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: vmStackConfig(projName, suffix, "tf-acc-gwh-"+suffix) + `
+				Config: vmStackConfig(projName, suffix, pubKey, "tf-acc-gwh-"+suffix) + `
 resource "microsrv_gateway_route" "http" {
   project_id  = microsrv_project.test.id
   compute_id  = microsrv_vm.test.id
@@ -448,7 +452,7 @@ resource "microsrv_gateway_route" "http" {
 			},
 			// Update target_port in place
 			{
-				Config: vmStackConfig(projName, suffix, "tf-acc-gwh-"+suffix) + `
+				Config: vmStackConfig(projName, suffix, pubKey, "tf-acc-gwh-"+suffix) + `
 resource "microsrv_gateway_route" "http" {
   project_id  = microsrv_project.test.id
   compute_id  = microsrv_vm.test.id
@@ -531,12 +535,13 @@ func TestAccLoadBalancer_basic(t *testing.T) {
 	acctest.SkipIfNoAccEnv(t)
 	suffix := acctest.RandSuffix()
 	projName := fmt.Sprintf("tf-acc-lb-%s", suffix)
+	pubKey := acctest.RandSSHPublicKey()
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: acctest.ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: lbConfig(projName, suffix, 80, 8080),
+				Config: lbConfig(projName, suffix, pubKey, 80, 8080),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("microsrv_load_balancer.test", "id"),
 					resource.TestCheckResourceAttr("microsrv_load_balancer.test", "state", "READY"),
@@ -547,7 +552,7 @@ func TestAccLoadBalancer_basic(t *testing.T) {
 			},
 			// Update target_port in-place
 			{
-				Config: lbConfig(projName, suffix, 80, 9090),
+				Config: lbConfig(projName, suffix, pubKey, 80, 9090),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("microsrv_load_balancer.test", "listeners.0.target_port", "9090"),
 				),
@@ -561,8 +566,8 @@ func TestAccLoadBalancer_basic(t *testing.T) {
 	})
 }
 
-func lbConfig(projName, suffix string, listenPort, targetPort int) string {
-	return vmStackConfig(projName, suffix, "tf-acc-lb-"+suffix) + fmt.Sprintf(`
+func lbConfig(projName, suffix, pubKey string, listenPort, targetPort int) string {
+	return vmStackConfig(projName, suffix, pubKey, "tf-acc-lb-"+suffix) + fmt.Sprintf(`
 resource "microsrv_load_balancer" "test" {
   project_id = microsrv_project.test.id
   vpc_id     = microsrv_vpc.test.id
