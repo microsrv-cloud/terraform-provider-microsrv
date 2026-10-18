@@ -45,7 +45,9 @@ jobs:
           tofu_version: "latest"
 
       - name: Run Acceptance Tests
+        shell: bash
         run: |
+          set -o pipefail
           PATTERN="TestAcc"
           TIMEOUT="80m"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.suite }}" = "fast" ]; then
