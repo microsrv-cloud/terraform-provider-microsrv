@@ -13,11 +13,11 @@ on:
       suite:
         description: "Which suite to run"
         required: false
-        default: "fast"
+        default: "full"
         type: choice
         options:
-          - fast
           - full
+          - fast
 
 # Cancel in-progress runs on the same branch/PR so a newer push wins.
 concurrency:
@@ -25,55 +25,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────────
-  # FAST: datasources + cheap resources (project, ssh_key, vpc, volume, NI)
-  # Runs on every push/PR to main or master.  Target < 5 min wall-clock time.
-  # ──────────────────────────────────────────────────────────────────────────
-  acc-fast:
-    name: "Acceptance — fast subset"
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.suite == 'fast')
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      TF_ACC: "1"
-      MICROSRV_TOKEN: ${{ secrets.MICROSRV_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: opentofu/setup-opentofu@v1
-        with:
-          tofu_version: "latest"
-
-      - name: Acceptance tests — fast
-        run: |
-          go test ./internal/... \
-            -run "TestAcc(DataRegion|DataFlavor|DataImage|DataQuota|DataPricing|DataProject|Project_|SSHKey_|VPC_|Volume_blank|NetworkInterface_)" \
-            -v -timeout 15m 2>&1 | tee /tmp/acc-fast.log
-
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: acc-fast-${{ github.run_id }}
-          path: /tmp/acc-fast.log
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # FULL: all acceptance tests including slow VM / container tests.
-  # Runs nightly and on manual dispatch with suite=full.
-  # ──────────────────────────────────────────────────────────────────────────
-  acc-full:
-    name: "Acceptance — full suite"
-    if: |
-      github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.suite == 'full')
+  acceptance:
+    name: "Acceptance Tests"
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -91,15 +44,20 @@ jobs:
         with:
           tofu_version: "latest"
 
-      - name: Acceptance tests — full
+      - name: Run Acceptance Tests
         run: |
-          go test ./internal/... \
-            -run "TestAcc" \
-            -v -timeout 80m 2>&1 | tee /tmp/acc-full.log
+          PATTERN="TestAcc"
+          TIMEOUT="80m"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.suite }}" = "fast" ]; then
+            PATTERN="TestAcc(DataRegion|DataFlavor|DataImage|DataQuota|DataPricing|DataProject|Project_|SSHKey_|VPC_|Volume_blank|NetworkInterface_)"
+            TIMEOUT="15m"
+          fi
+          echo "Running acceptance tests with pattern: $PATTERN (timeout: $TIMEOUT)"
+          go test ./internal/... -run "$PATTERN" -v -timeout "$TIMEOUT" 2>&1 | tee /tmp/acc.log
 
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: acc-full-${{ github.run_id }}
-          path: /tmp/acc-full.log
+          name: acc-logs-${{ github.run_id }}
+          path: /tmp/acc.log
