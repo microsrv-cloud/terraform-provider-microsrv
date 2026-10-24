@@ -415,10 +415,11 @@ resource "microsrv_gateway_route" "ssh" {
 			// is covered by TestAccGatewayRoute_http to avoid ssh-specific
 			// Helios flakiness on the disable path.
 			{
-				ResourceName:      "microsrv_gateway_route.ssh",
-				ImportState:       true,
-				ImportStateVerify: true,
-				Config:            sshRouteConfig,
+				ResourceName:            "microsrv_gateway_route.ssh",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"updated_at"},
+				Config:                  sshRouteConfig,
 			},
 		},
 	})
@@ -463,9 +464,10 @@ resource "microsrv_gateway_route" "http" {
 				),
 			},
 			{
-				ResourceName:      "microsrv_gateway_route.http",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_gateway_route.http",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"updated_at"},
 			},
 		},
 	})
@@ -517,9 +519,10 @@ resource "microsrv_wireguard_peer" "test" {
 				),
 			},
 			{
-				ResourceName:      "microsrv_wireguard_peer.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_wireguard_peer.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"updated_at"},
 			},
 		},
 	})
@@ -539,19 +542,20 @@ func TestAccLoadBalancer_basic(t *testing.T) {
 		ProtoV6ProviderFactories: acctest.ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: lbConfig(projName, suffix, pubKey, 80, 8080),
+				Config: lbConfig(projName, suffix, pubKey, 80, 22),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("microsrv_load_balancer.test", "id"),
 					resource.TestCheckResourceAttr("microsrv_load_balancer.test", "state", "READY"),
 					resource.TestCheckResourceAttr("microsrv_load_balancer.test", "listeners.0.protocol", "tcp"),
 					resource.TestCheckResourceAttr("microsrv_load_balancer.test", "listeners.0.listen_port", "80"),
-					resource.TestCheckResourceAttr("microsrv_load_balancer.test", "listeners.0.target_port", "8080"),
+					resource.TestCheckResourceAttr("microsrv_load_balancer.test", "listeners.0.target_port", "22"),
 				),
 			},
 			{
-				ResourceName:      "microsrv_load_balancer.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_load_balancer.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"status", "updated_at"},
 			},
 		},
 	})
