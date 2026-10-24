@@ -269,17 +269,19 @@ func setVMState(m *vmModel, out *client.VM) {
 	m.Serverless = types.BoolValue(out.Serverless)
 	m.Name = types.StringValue(out.Name)
 	m.NetworkInterfaceIDs = stringsToList(out.NetworkInterfaceIDs)
-	// The API prepends the explicit boot volume to volume_ids; state must
-	// mirror config exactly (sorted key list, data disks only) or Tofu rejects
-	// the apply with "inconsistent result after apply".
-	keys := append([]string(nil), out.SSHKeyIDs...)
-	sort.Strings(keys)
-	m.SSHKeyIDs = stringsToList(keys)
+	// The API prepends the explicit boot volume to volume_ids at position 0.
+	// Extract it as boot_volume_id so that import round-trips are exact. Data
+	// disks (positions 1+) are stored in volume_ids to mirror the config.
 	vols := append([]string(nil), out.VolumeIDs...)
 	if len(vols) > 0 {
+		m.BootVolumeID = types.StringValue(vols[0])
 		vols = vols[1:]
 	}
 	m.VolumeIDs = stringsToList(vols)
+	// Sort SSH key IDs so state matches config regardless of API ordering.
+	keys := append([]string(nil), out.SSHKeyIDs...)
+	sort.Strings(keys)
+	m.SSHKeyIDs = stringsToList(keys)
 	m.State = types.StringValue(out.State)
 	m.Status = types.StringValue(rawJSON(out.Status))
 	m.CreatedAt = types.StringValue(out.CreatedAt)

@@ -1,0 +1,73 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Nightly at 02:00 UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Which suite to run"
+        required: false
+        default: "full"
+        type: choice
+        options:
+          - full
+          - fast
+
+# Do NOT cancel in-progress runs; killing a run mid-flight aborts OpenTofu
+# before terraform destroy can execute, stranding live cloud resources.
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    name: "Acceptance Tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TF_ACC: "1"
+      MICROSRV_TOKEN: ${{ secrets.MICROSRV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "latest"
+
+      - name: Sweep stale resources (pre-test)
+        run: go run ./scripts/sweep.go
+
+      - name: Run Acceptance Tests
+        shell: bash
+        run: |
+          set -o pipefail
+          PATTERN="TestAcc"
+          TIMEOUT="80m"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.suite }}" = "fast" ]; then
+            PATTERN="TestAcc(DataRegion|DataFlavor|DataImage|DataQuota|DataPricing|DataProject|Project_|SSHKey_|VPC_|Volume_blank|NetworkInterface_)"
+            TIMEOUT="15m"
+          fi
+          echo "Running acceptance tests with pattern: $PATTERN (timeout: $TIMEOUT)"
+          go test ./internal/... -run "$PATTERN" -v -timeout "$TIMEOUT" 2>&1 | tee /tmp/acc.log
+
+      - name: Sweep stale resources (post-test)
+        if: always()
+        run: go run ./scripts/sweep.go
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acc-logs-${{ github.run_id }}
+          path: /tmp/acc.log
