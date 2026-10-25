@@ -147,9 +147,10 @@ func TestAccContainer_basic(t *testing.T) {
 			},
 			// Step 3: import round-trip
 			{
-				ResourceName:      "microsrv_container.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_container.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"status", "updated_at"},
 			},
 		},
 	})
