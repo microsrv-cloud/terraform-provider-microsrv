@@ -31,6 +31,7 @@ type gatewayRouteModel struct {
 	ProjectID     types.String `tfsdk:"project_id"`
 	RegionID      types.String `tfsdk:"region_id"`
 	ComputeID     types.String `tfsdk:"compute_id"`
+	Name          types.String `tfsdk:"name"`
 	Protocol      types.String `tfsdk:"protocol"`
 	SNIDomain     types.String `tfsdk:"sni_domain"`
 	ProxyProtocol types.String `tfsdk:"proxy_protocol"`
@@ -61,6 +62,15 @@ func (r *gatewayRouteResource) Schema(_ context.Context, _ resource.SchemaReques
 			},
 			"compute_id": schema.StringAttribute{
 				Required: true,
+			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Optional human-facing name. Immutable after create; requires replace.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"protocol": schema.StringAttribute{
 				Required: true,
@@ -111,6 +121,7 @@ func (r *gatewayRouteResource) Create(ctx context.Context, req resource.CreateRe
 
 	clientReq := client.CreateGatewayRouteRequest{
 		ComputeID: plan.ComputeID.ValueString(),
+		Name:      plan.Name.ValueString(),
 		Protocol:  plan.Protocol.ValueString(),
 	}
 	if !plan.SNIDomain.IsNull() && !plan.SNIDomain.IsUnknown() {
@@ -252,6 +263,7 @@ func setGatewayRouteState(m *gatewayRouteModel, out *client.GatewayRoute) {
 	m.ProjectID = types.StringValue(out.ProjectID)
 	m.RegionID = types.StringValue(out.RegionID)
 	m.ComputeID = types.StringValue(out.ComputeID)
+	m.Name = types.StringValue(out.Name)
 	m.Protocol = types.StringValue(out.Protocol)
 	m.SNIDomain = types.StringValue(out.SNIDomain)
 	if out.SNIDomain == "" {

@@ -277,27 +277,27 @@ func TestLoadBalancerLifecycle(t *testing.T) {
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				t.Fatal(err)
 			}
-			if req.VPCID != "vpc1" || req.VIP != "10.44.0.10" || len(req.Listeners) != 1 || len(req.Backends) != 1 {
+			if req.VPCID != "vpc1" || req.VIP != "10.44.0.10" || len(req.Listeners) != 1 || len(req.Backends) != 1 || req.Name != "lb-test" {
 				t.Fatalf("%+v", req)
 			}
 			if req.Listeners[0].Protocol != "tcp" || req.Listeners[0].ListenPort != 80 || req.Listeners[0].TargetPort != 8080 {
 				t.Fatalf("%+v", req)
 			}
 			w.WriteHeader(http.StatusAccepted)
-			_ = json.NewEncoder(w).Encode(client.LoadBalancer{ID: "lb1", ProjectID: "p1", RegionID: "r1", VPCID: req.VPCID, VIP: req.VIP, Listeners: req.Listeners, Backends: req.Backends, HealthCheck: client.LBHealthCheck{Protocol: "tcp"}, State: "PENDING"})
+			_ = json.NewEncoder(w).Encode(client.LoadBalancer{ID: "lb1", ProjectID: "p1", RegionID: "r1", VPCID: req.VPCID, Name: req.Name, VIP: req.VIP, Listeners: req.Listeners, Backends: req.Backends, HealthCheck: client.LBHealthCheck{Protocol: "tcp"}, State: "PENDING"})
 		case r.Method == http.MethodPatch && r.URL.Path == "/api/v1/load-balancers/lb1":
 			var preq client.PatchLoadBalancerRequest
 			if err := json.NewDecoder(r.Body).Decode(&preq); err != nil {
 				t.Fatal(err)
 			}
-			if preq.Backends == nil || len(*preq.Backends) != 1 || (*preq.Backends)[0] != "c1" {
+			if preq.Backends == nil || len(*preq.Backends) != 1 || (*preq.Backends)[0] != "c1" || preq.Name == nil || *preq.Name != "lb-renamed" {
 				t.Fatalf("%+v", preq)
 			}
 			w.WriteHeader(http.StatusAccepted)
-			_ = json.NewEncoder(w).Encode(client.LoadBalancer{ID: "lb1", ProjectID: "p1", RegionID: "r1", VPCID: "vpc1", VIP: "10.44.0.10", Listeners: []client.LBListener{{Protocol: "tcp", ListenPort: 80, TargetPort: 8080, Algorithm: "round_robin"}}, Backends: *preq.Backends, HealthCheck: client.LBHealthCheck{Protocol: "tcp"}, State: "UPDATING"})
+			_ = json.NewEncoder(w).Encode(client.LoadBalancer{ID: "lb1", ProjectID: "p1", RegionID: "r1", VPCID: "vpc1", Name: *preq.Name, VIP: "10.44.0.10", Listeners: []client.LBListener{{Protocol: "tcp", ListenPort: 80, TargetPort: 8080, Algorithm: "round_robin"}}, Backends: *preq.Backends, HealthCheck: client.LBHealthCheck{Protocol: "tcp"}, State: "UPDATING"})
 		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/load-balancers/lb1":
 			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(client.LoadBalancer{ID: "lb1", ProjectID: "p1", RegionID: "r1", VPCID: "vpc1", VIP: "10.44.0.10", Listeners: []client.LBListener{{Protocol: "tcp", ListenPort: 80, TargetPort: 8080, Algorithm: "round_robin"}}, Backends: []string{"vm1"}, HealthCheck: client.LBHealthCheck{Protocol: "tcp"}, State: "READY", Status: json.RawMessage(`{"ready":true}`)})
+			_ = json.NewEncoder(w).Encode(client.LoadBalancer{ID: "lb1", ProjectID: "p1", RegionID: "r1", VPCID: "vpc1", Name: "lb-renamed", VIP: "10.44.0.10", Listeners: []client.LBListener{{Protocol: "tcp", ListenPort: 80, TargetPort: 8080, Algorithm: "round_robin"}}, Backends: []string{"vm1"}, HealthCheck: client.LBHealthCheck{Protocol: "tcp"}, State: "READY", Status: json.RawMessage(`{"ready":true}`)})
 		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/load-balancers/lb1":
 			w.WriteHeader(http.StatusAccepted)
 			_ = json.NewEncoder(w).Encode(client.LoadBalancer{ID: "lb1", State: "DELETING"})
@@ -314,6 +314,7 @@ func TestLoadBalancerLifecycle(t *testing.T) {
 
 	lb, err := c.CreateLoadBalancer(context.Background(), "p1", client.CreateLoadBalancerRequest{
 		VPCID:     "vpc1",
+		Name:      "lb-test",
 		VIP:       "10.44.0.10",
 		Listeners: []client.LBListener{{Protocol: "tcp", ListenPort: 80, TargetPort: 8080}},
 		Backends:  []string{"vm1"},
@@ -321,7 +322,7 @@ func TestLoadBalancerLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lb.ID != "lb1" || lb.VIP != "10.44.0.10" {
+	if lb.ID != "lb1" || lb.VIP != "10.44.0.10" || lb.Name != "lb-test" {
 		t.Fatalf("%+v", lb)
 	}
 
@@ -334,7 +335,8 @@ func TestLoadBalancerLifecycle(t *testing.T) {
 	}
 
 	backends := []string{"c1"}
-	if _, err := c.PatchLoadBalancer(context.Background(), "lb1", client.PatchLoadBalancerRequest{Backends: &backends}); err != nil {
+	renamed := "lb-renamed"
+	if _, err := c.PatchLoadBalancer(context.Background(), "lb1", client.PatchLoadBalancerRequest{Name: &renamed, Backends: &backends}); err != nil {
 		t.Fatal(err)
 	}
 

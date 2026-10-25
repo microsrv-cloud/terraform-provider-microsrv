@@ -30,6 +30,7 @@ type networkInterfaceModel struct {
 	ProjectID types.String `tfsdk:"project_id"`
 	VPCID     types.String `tfsdk:"vpc_id"`
 	RegionID  types.String `tfsdk:"region_id"`
+	Name      types.String `tfsdk:"name"`
 	IPAddress types.String `tfsdk:"ip_address"`
 	PrefixLen types.Int64  `tfsdk:"prefix_len"`
 	State     types.String `tfsdk:"state"`
@@ -89,6 +90,15 @@ func (r *networkInterfaceResource) Schema(_ context.Context, _ resource.SchemaRe
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Optional human-facing name. Immutable after create; requires replace.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
 			"region_id": schema.StringAttribute{Computed: true},
 			"ip_address": schema.StringAttribute{
 				MarkdownDescription: "Optional pinned IPv4 inside the VPC range (not network/gateway/broadcast, not already used by an NI or LB VIP). Omit to let the platform assign the first free address. Changing it forces replacement.",
@@ -117,6 +127,7 @@ func (r *networkInterfaceResource) Create(ctx context.Context, req resource.Crea
 	}
 	out, err := r.meta.Client.CreateNetworkInterface(ctx, plan.ProjectID.ValueString(), client.CreateNetworkInterfaceRequest{
 		VPCID:     plan.VPCID.ValueString(),
+		Name:      plan.Name.ValueString(),
 		IPAddress: plan.IPAddress.ValueString(),
 	})
 	if err != nil {
@@ -202,6 +213,7 @@ func setNetworkInterfaceState(m *networkInterfaceModel, out *client.NetworkInter
 	m.ProjectID = types.StringValue(out.ProjectID)
 	m.VPCID = types.StringValue(out.VPCID)
 	m.RegionID = types.StringValue(out.RegionID)
+	m.Name = types.StringValue(out.Name)
 	m.IPAddress = types.StringValue(out.IPAddress)
 	m.PrefixLen = types.Int64Value(int64(out.PrefixLen))
 	m.State = types.StringValue(out.State)

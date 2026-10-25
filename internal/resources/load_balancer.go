@@ -33,6 +33,7 @@ type loadBalancerModel struct {
 	ProjectID   types.String `tfsdk:"project_id"`
 	RegionID    types.String `tfsdk:"region_id"`
 	VPCID       types.String `tfsdk:"vpc_id"`
+	Name        types.String `tfsdk:"name"`
 	VIP         types.String `tfsdk:"vip"`
 	Listeners   types.List   `tfsdk:"listeners"`
 	Backends    types.List   `tfsdk:"backends"`
@@ -96,6 +97,14 @@ func (r *loadBalancerResource) Schema(_ context.Context, _ resource.SchemaReques
 			"vpc_id": schema.StringAttribute{
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Optional Helios short name (RFC 1035 DNS label). Updatable in place.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"vip": schema.StringAttribute{
 				MarkdownDescription: "Explicit IPv4 VIP: a usable host address in the VPC, not colliding with any NI IP or other LB VIP.",
@@ -177,6 +186,7 @@ func (r *loadBalancerResource) Create(ctx context.Context, req resource.CreateRe
 
 	clientReq := client.CreateLoadBalancerRequest{
 		VPCID:     plan.VPCID.ValueString(),
+		Name:      plan.Name.ValueString(),
 		VIP:       plan.VIP.ValueString(),
 		Listeners: listeners,
 		Backends:  backends,
@@ -251,7 +261,9 @@ func (r *loadBalancerResource) Update(ctx context.Context, req resource.UpdateRe
 
 	// listeners/backends are full-table replaces on the API; health_check
 	// nil means "leave unchanged", so a removed block resets to defaults.
+	name := plan.Name.ValueString()
 	patch := client.PatchLoadBalancerRequest{
+		Name:        &name,
 		Listeners:   &listeners,
 		Backends:    &backends,
 		HealthCheck: &client.LBHealthCheck{},
@@ -348,6 +360,7 @@ func setLoadBalancerState(ctx context.Context, m *loadBalancerModel, out *client
 	m.ProjectID = types.StringValue(out.ProjectID)
 	m.RegionID = types.StringValue(out.RegionID)
 	m.VPCID = types.StringValue(out.VPCID)
+	m.Name = types.StringValue(out.Name)
 	m.VIP = types.StringValue(out.VIP)
 	listenerVals := make([]attr.Value, len(out.Listeners))
 	for i, l := range out.Listeners {

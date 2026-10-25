@@ -29,6 +29,7 @@ type volumeModel struct {
 	ID         types.String `tfsdk:"id"`
 	ProjectID  types.String `tfsdk:"project_id"`
 	RegionID   types.String `tfsdk:"region_id"`
+	Name       types.String `tfsdk:"name"`
 	SizeMiB    types.Int64  `tfsdk:"size_mib"`
 	Bootable   types.Bool   `tfsdk:"bootable"`
 	CloneFrom  types.String `tfsdk:"clone_from"`
@@ -59,6 +60,15 @@ func (r *volumeResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"region_id": schema.StringAttribute{
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Optional human-facing name. Immutable after create; requires replace.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"size_mib": schema.Int64Attribute{
 				MarkdownDescription: "Volume size in MiB (512 MiB quantum; updatable in place, grow-only).",
@@ -94,6 +104,7 @@ func (r *volumeResource) Create(ctx context.Context, req resource.CreateRequest,
 	cloneFrom := plan.CloneFrom.ValueString()
 	out, err := r.meta.Client.CreateVolume(ctx, plan.ProjectID.ValueString(), client.CreateVolumeRequest{
 		RegionID:  plan.RegionID.ValueString(),
+		Name:      plan.Name.ValueString(),
 		SizeMiB:   plan.SizeMiB.ValueInt64(),
 		CloneFrom: cloneFrom,
 		// The API requires clone_from and bootable together (bootable without a
@@ -206,6 +217,7 @@ func setVolumeState(m *volumeModel, out *client.Volume) {
 	m.ID = types.StringValue(out.ID)
 	m.ProjectID = types.StringValue(out.ProjectID)
 	m.RegionID = types.StringValue(out.RegionID)
+	m.Name = types.StringValue(out.Name)
 	m.SizeMiB = types.Int64Value(out.SizeMiB)
 	m.Bootable = types.BoolValue(out.Bootable)
 	// clone_from is Optional, so an unset config must round-trip as null —

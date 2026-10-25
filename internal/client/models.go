@@ -94,6 +94,7 @@ type VPC struct {
 	ID        string          `json:"id"`
 	ProjectID string          `json:"project_id"`
 	RegionID  string          `json:"region_id"`
+	Name      string          `json:"name"`
 	VNI       int             `json:"vni"`
 	CIDR      string          `json:"cidr"`
 	State     string          `json:"state"`
@@ -107,6 +108,7 @@ type Volume struct {
 	ID         string          `json:"id"`
 	ProjectID  string          `json:"project_id"`
 	RegionID   string          `json:"region_id"`
+	Name       string          `json:"name"`
 	SizeMiB    int64           `json:"size_mib"`
 	CloneFrom  string          `json:"clone_from"`
 	Bootable   bool            `json:"bootable"`
@@ -123,6 +125,7 @@ type NetworkInterface struct {
 	ProjectID string          `json:"project_id"`
 	RegionID  string          `json:"region_id"`
 	VPCID     string          `json:"vpc_id"`
+	Name      string          `json:"name"`
 	IPAddress string          `json:"ip_address"`
 	PrefixLen int             `json:"prefix_len"`
 	State     string          `json:"state"`
@@ -161,6 +164,7 @@ type CreateSSHKeyRequest struct {
 
 type CreateVPCRequest struct {
 	RegionID string `json:"region_id"`
+	Name     string `json:"name,omitempty"`
 	CIDR     string `json:"cidr"`
 }
 
@@ -170,6 +174,7 @@ type PatchVPCRequest struct {
 
 type CreateVolumeRequest struct {
 	RegionID string `json:"region_id"`
+	Name     string `json:"name,omitempty"`
 	SizeMiB  int64  `json:"size_mib"`
 	// CloneFrom (image code) makes the volume a bootable boot disk; the API
 	// requires bootable=true together with clone_from (we send both).
@@ -183,6 +188,7 @@ type PatchVolumeRequest struct {
 
 type CreateNetworkInterfaceRequest struct {
 	VPCID     string `json:"vpc_id"`
+	Name      string `json:"name,omitempty"`
 	IPAddress string `json:"ip_address,omitempty"` // optional pinned address; empty = platform assigns
 }
 
@@ -249,6 +255,7 @@ type WireGuardPeer struct {
 	ProjectID           string          `json:"project_id"`
 	RegionID            string          `json:"region_id"`
 	NetworkInterfaceID  string          `json:"network_interface_id"`
+	Name                string          `json:"name"`
 	PublicKey           string          `json:"public_key"`
 	Comment             string          `json:"comment,omitempty"`
 	PersistentKeepalive int             `json:"persistent_keepalive"`
@@ -291,6 +298,7 @@ type PatchContainerRequest struct {
 
 type CreateWireGuardPeerRequest struct {
 	NetworkInterfaceID  string `json:"network_interface_id"`
+	Name                string `json:"name,omitempty"`
 	PublicKey           string `json:"public_key"`
 	Comment             string `json:"comment,omitempty"`
 	PersistentKeepalive *int   `json:"persistent_keepalive,omitempty"`
@@ -307,6 +315,7 @@ type GatewayRoute struct {
 	ProjectID     string          `json:"project_id"`
 	RegionID      string          `json:"region_id"`
 	ComputeID     string          `json:"compute_id"`
+	Name          string          `json:"name"`
 	Protocol      string          `json:"protocol"`
 	SNIDomain     string          `json:"sni_domain,omitempty"`
 	ProxyProtocol string          `json:"proxy_protocol,omitempty"`
@@ -321,6 +330,7 @@ type GatewayRoute struct {
 
 type CreateGatewayRouteRequest struct {
 	ComputeID     string `json:"compute_id"`
+	Name          string `json:"name,omitempty"`
 	Protocol      string `json:"protocol"`
 	SNIDomain     string `json:"sni_domain,omitempty"`
 	ProxyProtocol string `json:"proxy_protocol,omitempty"`
@@ -371,6 +381,7 @@ type LoadBalancer struct {
 	ProjectID   string          `json:"project_id"`
 	RegionID    string          `json:"region_id"`
 	VPCID       string          `json:"vpc_id"`
+	Name        string          `json:"name"`
 	VIP         string          `json:"vip"`
 	Listeners   []LBListener    `json:"listeners"`
 	Backends    []string        `json:"backends"`
@@ -383,6 +394,7 @@ type LoadBalancer struct {
 
 type CreateLoadBalancerRequest struct {
 	VPCID       string         `json:"vpc_id"`
+	Name        string         `json:"name,omitempty"`
 	VIP         string         `json:"vip"`
 	Listeners   []LBListener   `json:"listeners"`
 	Backends    []string       `json:"backends"`
@@ -390,6 +402,7 @@ type CreateLoadBalancerRequest struct {
 }
 
 type PatchLoadBalancerRequest struct {
+	Name        *string        `json:"name,omitempty"`
 	Listeners   *[]LBListener  `json:"listeners,omitempty"`
 	Backends    *[]string      `json:"backends,omitempty"`
 	HealthCheck *LBHealthCheck `json:"health_check,omitempty"`

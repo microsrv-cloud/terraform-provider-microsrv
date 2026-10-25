@@ -150,7 +150,7 @@ locals {
 | `microsrv_container_image` | OCI image pull; Waits READY; ForceNew |
 | `microsrv_container` | gVisor container; `class` required; `serverless` scale-to-zero; `user` override (`root` or image user); `command` may be empty (inherits image entrypoint/cmd); `ssh_key_ids` optional (unset = project keyring, updatable 1..N); `name`/`flavor_id`/`ssh_key_ids` updatable; waits READY or CHECKPOINTED |
 | `microsrv_gateway_route` | Console SSH/HTTP route or TLS SNI passthrough (`sni_domain`) for a VM/container/LB; `proxy_protocol` v1/v2 for tls; `target_port` backend dial port for http (mutable); `comment`/`enabled`/`target_port` updatable |
-| `microsrv_load_balancer` | L4 balancer with explicit VPC VIP; `listeners`/`backends`/`health_check` updatable |
+| `microsrv_load_balancer` | L4 balancer with explicit VPC VIP; `name`/`listeners`/`backends`/`health_check` updatable |
 | `microsrv_wireguard_peer` | WireGuard client peer on a network interface; public key only; ForceNew |
 
 ## Examples

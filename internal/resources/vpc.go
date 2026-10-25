@@ -29,6 +29,7 @@ type vpcModel struct {
 	ID        types.String `tfsdk:"id"`
 	ProjectID types.String `tfsdk:"project_id"`
 	RegionID  types.String `tfsdk:"region_id"`
+	Name      types.String `tfsdk:"name"`
 	CIDR      types.String `tfsdk:"cidr"`
 	VNI       types.Int64  `tfsdk:"vni"`
 	State     types.String `tfsdk:"state"`
@@ -58,6 +59,15 @@ func (r *vpcResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Optional human-facing name. Immutable after create; requires replace.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
 			"cidr": schema.StringAttribute{
 				MarkdownDescription: "VPC CIDR (IPv4 /24). Immutable after create; requires replace.",
 				Required:            true,
@@ -85,6 +95,7 @@ func (r *vpcResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 	out, err := r.meta.Client.CreateVPC(ctx, plan.ProjectID.ValueString(), client.CreateVPCRequest{
 		RegionID: plan.RegionID.ValueString(),
+		Name:     plan.Name.ValueString(),
 		CIDR:     plan.CIDR.ValueString(),
 	})
 	if err != nil {
@@ -193,6 +204,7 @@ func setVPCState(m *vpcModel, out *client.VPC) {
 	m.ID = types.StringValue(out.ID)
 	m.ProjectID = types.StringValue(out.ProjectID)
 	m.RegionID = types.StringValue(out.RegionID)
+	m.Name = types.StringValue(out.Name)
 	m.CIDR = types.StringValue(out.CIDR)
 	m.VNI = types.Int64Value(int64(out.VNI))
 	m.State = types.StringValue(out.State)
