@@ -33,6 +33,7 @@ type wireGuardPeerModel struct {
 	ProjectID           types.String `tfsdk:"project_id"`
 	RegionID            types.String `tfsdk:"region_id"`
 	NetworkInterfaceID  types.String `tfsdk:"network_interface_id"`
+	Name                types.String `tfsdk:"name"`
 	PublicKey           types.String `tfsdk:"public_key"`
 	Comment             types.String `tfsdk:"comment"`
 	PersistentKeepalive types.Int64  `tfsdk:"persistent_keepalive"`
@@ -62,6 +63,15 @@ func (r *wireGuardPeerResource) Schema(_ context.Context, _ resource.SchemaReque
 			"network_interface_id": schema.StringAttribute{
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Optional human-facing name. Immutable after create; requires replace.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"public_key": schema.StringAttribute{
 				Required:      true,
@@ -103,6 +113,7 @@ func (r *wireGuardPeerResource) Create(ctx context.Context, req resource.CreateR
 	}
 	clientReq := client.CreateWireGuardPeerRequest{
 		NetworkInterfaceID: plan.NetworkInterfaceID.ValueString(),
+		Name:               plan.Name.ValueString(),
 		PublicKey:          plan.PublicKey.ValueString(),
 	}
 	if !plan.Comment.IsNull() && !plan.Comment.IsUnknown() {
@@ -220,6 +231,7 @@ func setWireGuardPeerState(m *wireGuardPeerModel, out *client.WireGuardPeer) {
 	m.ID = types.StringValue(out.ID)
 	m.ProjectID = types.StringValue(out.ProjectID)
 	m.NetworkInterfaceID = types.StringValue(out.NetworkInterfaceID)
+	m.Name = types.StringValue(out.Name)
 	m.PublicKey = types.StringValue(out.PublicKey)
 	m.Comment = types.StringValue(out.Comment)
 	if out.Comment == "" {
