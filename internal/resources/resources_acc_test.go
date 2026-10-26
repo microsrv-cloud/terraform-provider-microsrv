@@ -374,8 +374,10 @@ func TestAccVM_basic(t *testing.T) {
 				ResourceName:      "microsrv_vm.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				// updated_at drifts by a few ms between apply and import read.
-				ImportStateVerifyIgnore: []string{"updated_at"},
+				// status is a live server-side JSON blob that changes between the
+				// apply and the import read (metrics counters and node_status
+				// appear asynchronously). updated_at similarly drifts by a few ms.
+				ImportStateVerifyIgnore: []string{"status", "updated_at"},
 			},
 		},
 	})
