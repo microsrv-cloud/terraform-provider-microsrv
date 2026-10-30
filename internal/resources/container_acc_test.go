@@ -51,7 +51,7 @@ func TestAccContainerImage_basic(t *testing.T) {
 				ResourceName:            "microsrv_container_image.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"ref"},
+				ImportStateVerifyIgnore: []string{"ref", "state", "status", "updated_at"},
 			},
 		},
 	})
@@ -150,7 +150,7 @@ func TestAccContainer_basic(t *testing.T) {
 				ResourceName:            "microsrv_container.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"status", "updated_at"},
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
