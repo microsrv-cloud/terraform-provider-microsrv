@@ -37,9 +37,10 @@ resource "microsrv_project" "test" {
 			},
 			// Import round-trip
 			{
-				ResourceName:      "microsrv_project.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_project.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
@@ -74,9 +75,10 @@ resource "microsrv_ssh_key" "test" {
 				),
 			},
 			{
-				ResourceName:      "microsrv_ssh_key.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_ssh_key.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
@@ -104,9 +106,10 @@ func TestAccVPC_basic(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      "microsrv_vpc.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_vpc.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
@@ -157,9 +160,10 @@ func TestAccVolume_blank(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      "microsrv_volume.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_volume.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
@@ -202,9 +206,10 @@ func TestAccVolume_bootable(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      "microsrv_volume.boot",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "microsrv_volume.boot",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
@@ -254,8 +259,8 @@ func TestAccNetworkInterface_basic(t *testing.T) {
 				ImportStateVerify: true,
 				// status is a live server-side JSON blob that can change between
 				// the apply and the import read (e.g. tap_name/underlay_ip appear
-				// asynchronously). updated_at similarly drifts by a few ms.
-				ImportStateVerifyIgnore: []string{"status", "updated_at"},
+				// asynchronously).
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
@@ -371,13 +376,10 @@ func TestAccVM_basic(t *testing.T) {
 			},
 			// Step 3: import round-trip
 			{
-				ResourceName:      "microsrv_vm.test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				// status is a live server-side JSON blob that changes between the
-				// apply and the import read (metrics counters and node_status
-				// appear asynchronously). updated_at similarly drifts by a few ms.
-				ImportStateVerifyIgnore: []string{"status", "updated_at"},
+				ResourceName:            "microsrv_vm.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
@@ -420,7 +422,7 @@ resource "microsrv_gateway_route" "ssh" {
 				ResourceName:            "microsrv_gateway_route.ssh",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"updated_at"},
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 				Config:                  sshRouteConfig,
 			},
 		},
@@ -469,7 +471,7 @@ resource "microsrv_gateway_route" "http" {
 				ResourceName:            "microsrv_gateway_route.http",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"updated_at"},
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
@@ -524,7 +526,7 @@ resource "microsrv_wireguard_peer" "test" {
 				ResourceName:            "microsrv_wireguard_peer.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"updated_at"},
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
@@ -557,7 +559,7 @@ func TestAccLoadBalancer_basic(t *testing.T) {
 				ResourceName:            "microsrv_load_balancer.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"status", "updated_at"},
+				ImportStateVerifyIgnore: acctest.VolatileImportAttrs,
 			},
 		},
 	})
