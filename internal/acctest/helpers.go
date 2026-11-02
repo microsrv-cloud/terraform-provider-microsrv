@@ -22,6 +22,19 @@ var ProviderFactories = map[string]func() (tfprotov6.ProviderServer, error){
 	"microsrv": providerserver.NewProtocol6WithError(provider.New("test")()),
 }
 
+// VolatileImportAttrs lists computed attributes that legitimately differ
+// between the apply read and the import read, so every ImportStateVerify step
+// should ignore them:
+//
+//   - updated_at is bumped by asynchronous server-side work (volume clone,
+//     container restart) that lands after apply returns;
+//   - state flips READY -> PROVISIONING while that work runs;
+//   - status carries live metrics/node_status that appear asynchronously.
+//
+// Apply-time Check functions still assert the real values; this only skips the
+// racy second read.
+var VolatileImportAttrs = []string{"state", "status", "updated_at"}
+
 // SkipIfNoAccEnv skips the test when TF_ACC is unset or when no auth token is available.
 func SkipIfNoAccEnv(t *testing.T) {
 	t.Helper()
